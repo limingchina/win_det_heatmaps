@@ -25,6 +25,12 @@ exec('from common_pytorch.blocks.' + s_config.pytorch.block + \
      ' import get_default_network_config, get_pose_net, init_pose_net')
 
 def main():
+    # Get the logging level from the environment variable
+    log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
+
+    # Set the logging level based on the environment variable value
+    logging.basicConfig(level=getattr(logging, log_level))
+
     # parsing specific config
     config = copy.deepcopy(s_config)
     config.network = get_default_network_config()

@@ -6,7 +6,7 @@ pytorch:
   block: 'resnet_pose'
   loss: 'gaussian'
 dataiter:
-  batch_images_per_ctx: 48
+  batch_images_per_ctx: 20
   threads: 4
 optimizer:
   lr: 0.001
