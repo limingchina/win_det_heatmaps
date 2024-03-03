@@ -1,5 +1,6 @@
 import os
 import cv2
+import logging
 import numpy as np
 import matplotlib.pyplot as plt
 from common.utility.utils import float2int
@@ -77,6 +78,15 @@ def debug_vis(img, window_corner, label=None, raw_img=None, plotLine=True):
     cv2.imshow('patch', cv_img_patch_show)
     cv2.waitKey(0)
 
+def is_ccw(points):
+    # Compute the signed area
+    area = 0
+    for i in range(len(points) - 1):
+        area += points[i][0] * points[i + 1][1] - points[i + 1][0] * points[i][1]
+    area += points[-1][0] * points[0][1] - points[0][0] * points[-1][1]
+    # Normally it should be area > 0. However, since the Y direction of an image is
+    # downward, the check should be flipped.
+    return area < 0
 
 def vis_eval_result(img, window, plotLine=False, saveFilename=None):
     if isinstance(img, str):
@@ -86,29 +96,99 @@ def vis_eval_result(img, window, plotLine=False, saveFilename=None):
         cv_img_patch_show = img.copy()
     else:
         assert 0, "unKnown Type of img in debug_vis"
+    logger = logging.getLogger()
 
+    logger.info(f'image name: {img}')
     # pylint: disable=C0200
     for idx in range(len(window)):
         lt, lb, rb, rt = window[idx]['position'][:4]
 
-        # The result for resnet has some wrong window shapes. Let's correct them here
+        # Check if lt, lb, rb, rt forms a rectangle in counter-clockwise order
+        if not is_ccw([lt, lb, rb, rt]):
+            logger.warning(f'Index {idx} is not in counter-clockwise order: {window[idx]}')
+            continue;
 
-        # if the x component of rt is smaller than that of lt, or
-        # if the bottom width is 3 times smaller than the top width,
-        # adjust the top width to align with the bottom
-        if rt[0] < lt[0] + 1 or abs(rb[0] - lb[0]) * 3 < abs(rt[0] - lt[0]):
+        # The result for resnet has some wrong window shapes. Let's correct them here.
+        # The principle is to shift points to the minimum window shape.
+        # We allow the maximum difference between the X components to be 0.3 times of
+        # the width of the window. For the difference between the Y components, we allow
+        # it to be 0.2 times of the height of the window since the difference between
+        # Y components is likely to be smaller for windows.
+        window_width = min(abs(lb[0] - rb[0]), abs(lt[0] - rt[0]))
+
+        # If the X component of rt is smaller than that of lt, it's self-intersecting.
+        # Move rt to align with rb.
+        if rt[0] < lt[0] + 0.5:
             rt[0] = rb[0]
-            print(f"Adjust rt[0] to rb[0]: index {idx}, {window[idx]}")
+            logger.warning(f"Adjust rt[0] to rb[0]: index {idx}, {window[idx]}")
 
-        # Similarly, if the x component of rb is smaller than that of lb, or
-        # If the top width is 3 times smaller than the bottom width, adjust
-        # the bottom width to align with the top
-        if rb[0] < lb[0] + 1 or abs(rt[0] - lt[0]) * 3 < abs(rb[0] - lb[0]):
+        # If the difference between the X component of the left points is larger than
+        # 0.3 times of the width, adjust the point with smaller X component to
+        # align with the point with the bigger X component.
+        if abs(lt[0] - lb[0]) > 0.3 * window_width:
+            if(lt[0] > lb[0]):
+                lb[0] = lt[0]
+                logger.warning(f"Adjust lb[0] to rb[0]: index {idx}, {window[idx]}")
+            else:
+                lt[0] = lb[0]
+                logger.warning(f"Adjust rb[0] to lb[0]: index {idx}, {window[idx]}")
+
+        # If the X component of rb is smaller than that of rt, it's self-intersecting.
+        # Move rb to align with rt.
+        if rb[0] < lb[0] + 0.5:
             rb[0] = rt[0]
-            print(f"Adjust rb[0] to rt[0]: index {idx}, {window[idx]}")
+            logger.warning(f"Adjust rb[0] to rt[0]: index {idx}, {window[idx]}")
 
-        # print to console all corner points with their names
-        # print(idx, 'lt:', lt, 'lb:', lb, 'rb:', rb, 'rt:', rt)
+        # If the difference between the X component of the right points is larger than
+        # 0.3 times of the width, adjust the point with bigger X component to
+        # align with the point with the smaller X component.
+        if abs(rt[0] - rb[0]) > 0.3 * window_width:
+            if(rt[0] < rb[0]):
+                rb[0] = rt[0]
+                logger.warning(f"Adjust rb[0] to rt[0]: index {idx}, {window[idx]}")
+            else:
+                rt[0] = rb[0]
+                logger.warning(f"Adjust rt[0] to rb[0]: index {idx}, {window[idx]}")
+
+        window_height = min(abs(lb[1] - lt[1]), abs(rb[1] - rt[1]))
+        # If the difference between the Y component of the top points is larger than
+        # 0.2 times of the height, adjust the point with smaller Y component to
+        # align with the point with the bigger Y component.
+        if abs(lt[1] - rt[1]) > 0.2 * window_height:
+            if(lt[1] > rt[1]):
+                logger.warning(f"Adjust rt[1] to lt[1]: index {idx}, {window[idx]}")
+                rt[1] = lt[1]
+            else:
+                logger.warning(f"Adjust lt[1] to rt[1]: index {idx}, {window[idx]}")
+                lt[1] = rt[1]
+
+        # Similarly, if the difference between the Y component of bottom points is larger
+        # than 0.2 times of the height, adjust the point with bigger Y component to
+        # align with the point with smaller Y component.
+        if abs(lb[1] - rb[1]) > 0.2 * window_height:
+            if(lb[1] < rb[1]):
+                logger.warning(f"Adjust rb[1] to lb[1]: index {idx}, {window[idx]}")
+                rb[1] = lb[1]
+            else:
+                logger.warning(f"Adjust lb[1] to rb[1]: index {idx}, {window[idx]}")
+                lb[1] = rb[1]
+
+        # if the difference btween the two top points or the two bottom points is too large,
+        # ignore the window
+        if abs(lt[1] - rt[1]) > 2 * window_height or abs(lb[1] - rb[1]) > 2 * window_height:
+            logger.warning(f"Ignore too large Y difference: index {idx}, {window[idx]}")
+            continue
+
+        # After all adjustments, check if lt, lb, rb, rt forms a rectangle in counter-clockwise
+        # order again
+        if not is_ccw([lt, lb, rb, rt]):
+            logger.warning(f'Index {idx} is not in counter-clockwise order: {window[idx]}')
+            continue;
+
+        # Leave some debugging code here
+        #if idx == 12 and "00155" in img:
+        #print(idx, 'lt:', lt, 'lb:', lb, 'rb:', rb, 'rt:', rt)
+        #print(f'window: {window[idx]}')
 
         # Shift the Y component of the left top point to the top by 5 pixels and put the idx
         # as a label for debugging purpose

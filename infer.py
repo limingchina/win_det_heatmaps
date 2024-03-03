@@ -48,7 +48,6 @@ def main():
     if not os.path.exists(output_path):
         os.makedirs(output_path)
     logger = logging.getLogger()
-    logger.addHandler(logging.StreamHandler())
 
     # define devices create multi-GPU context
     os.environ["CUDA_VISIBLE_DEVICES"] = config.pytorch.gpus  # a safer method
