@@ -3,7 +3,6 @@ from easydict import EasyDict as edict
 
 import torch
 import torch.utils.model_zoo as model_zoo
-from torchvision.models.resnet import model_urls
 
 from common_pytorch.base_modules.deconv_head import DeconvHead
 from common_pytorch.base_modules.resnet import resnet_spec, ResnetBackbone
@@ -31,6 +30,14 @@ def get_default_network_config():
 
 
 def init_pose_net(pose_net, cfg):
+    # From https://github.com/pytorch/vision/blob/v0.1.9/torchvision/models/resnet.py
+    model_urls = {
+        'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
+        'resnet34': 'https://download.pytorch.org/models/resnet34-333f7ec4.pth',
+        'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
+        'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
+        'resnet152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
+    }
     if cfg.from_model_zoo:
         _, _, _, name = resnet_spec[cfg.num_layers]
         org_resnet = model_zoo.load_url(model_urls[name])

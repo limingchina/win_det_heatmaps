@@ -87,8 +87,34 @@ def vis_eval_result(img, window, plotLine=False, saveFilename=None):
     else:
         assert 0, "unKnown Type of img in debug_vis"
 
+    # pylint: disable=C0200
     for idx in range(len(window)):
         lt, lb, rb, rt = window[idx]['position'][:4]
+
+        # The result for resnet has some wrong window shapes. Let's correct them here
+
+        # if the x component of rt is smaller than that of lt, or
+        # if the bottom width is 3 times smaller than the top width,
+        # adjust the top width to align with the bottom
+        if rt[0] < lt[0] + 1 or abs(rb[0] - lb[0]) * 3 < abs(rt[0] - lt[0]):
+            rt[0] = rb[0]
+            print(f"Adjust rt[0] to rb[0]: index {idx}, {window[idx]}")
+
+        # Similarly, if the x component of rb is smaller than that of lb, or
+        # If the top width is 3 times smaller than the bottom width, adjust
+        # the bottom width to align with the top
+        if rb[0] < lb[0] + 1 or abs(rt[0] - lt[0]) * 3 < abs(rb[0] - lb[0]):
+            rb[0] = rt[0]
+            print(f"Adjust rb[0] to rt[0]: index {idx}, {window[idx]}")
+
+        # print to console all corner points with their names
+        # print(idx, 'lt:', lt, 'lb:', lb, 'rb:', rb, 'rt:', rt)
+
+        # Shift the Y component of the left top point to the top by 5 pixels and put the idx
+        # as a label for debugging purpose
+        shifted_lt = lt
+        shifted_lt[1] = shifted_lt[1] - 5
+        cv2.putText(cv_img_patch_show, str(idx), float2int(shifted_lt[:2]), FONT_STYLE, 1.2, (255, 0, 0), 1)
 
         if plotLine:
             thickness = 3

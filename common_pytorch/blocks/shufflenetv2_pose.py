@@ -1,7 +1,6 @@
 import os
 import torch
 import torch.utils.model_zoo as model_zoo
-from torchvision.models.shufflenetv2 import model_urls
 from easydict import EasyDict as edict
 
 from common_pytorch.base_modules.deconv_head import DeconvHead
@@ -27,6 +26,12 @@ def get_default_network_config():
 
 def init_pose_net(pose_net, cfg):
     if cfg.from_model_zoo:
+        model_urls = {
+            "shufflenetv2_x0.5": "https://download.pytorch.org/models/shufflenetv2_x0.5-f707e7126e.pth",
+            "shufflenetv2_x1.0": "https://download.pytorch.org/models/shufflenetv2_x1-5666bf0f80.pth",
+            "shufflenetv2_x1.5": None,
+            "shufflenetv2_x2.0": None,
+        }
         org_shuffleNet = model_zoo.load_url(model_urls[cfg.name])
         # drop orginal resnet fc layer, add 'None' in case of no fc layer, that will raise error
         org_shuffleNet.pop('fc.weight', None)

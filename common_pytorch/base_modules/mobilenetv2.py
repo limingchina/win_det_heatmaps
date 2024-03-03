@@ -1,5 +1,6 @@
 import torch.nn as nn
-from torchvision.models.mobilenet import InvertedResidual, _make_divisible, ConvBNReLU
+
+from torchvision.models.mobilenetv2 import InvertedResidual, _make_divisible, Conv2dNormActivation
 
 class MobileNetV2_Backbone(nn.Module):
     def __init__(self,
@@ -47,7 +48,7 @@ class MobileNetV2_Backbone(nn.Module):
         # building first layer
         input_channel = _make_divisible(input_channel * width_mult, round_nearest)
         self.last_channel = _make_divisible(last_channel * max(1.0, width_mult), round_nearest)
-        features = [ConvBNReLU(3, input_channel, stride=2)]
+        features = [Conv2dNormActivation(3, input_channel, stride=2)]
         # building inverted residual blocks
         for t, c, n, s in inverted_residual_setting:
             output_channel = _make_divisible(c * width_mult, round_nearest)
@@ -56,7 +57,7 @@ class MobileNetV2_Backbone(nn.Module):
                 features.append(block(input_channel, output_channel, stride, expand_ratio=t))
                 input_channel = output_channel
         # building last several layers
-        features.append(ConvBNReLU(input_channel, self.last_channel, kernel_size=1))
+        features.append(Conv2dNormActivation(input_channel, self.last_channel, kernel_size=1))
         # make it nn.Sequential
         self.features = nn.Sequential(*features)
 

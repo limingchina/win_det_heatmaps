@@ -211,6 +211,7 @@ def inferNet(infer_data_loader, network, merge_hm_flip_func, merge_tag_flip_func
                                       imdb_list[n_s]['im_width'], imdb_list[n_s]['im_height'],
                                       rectify = test_config.rectify, winScoreThres = test_config.windowT)
             windows_list_with_score.append(group_corners_wz_score)
+            #print(windows_list_with_score)
         except Exception as e:
             assert 0, (n_s, e, os.path.basename(imdb_list[n_s]['image']))
             # print(e, '  ', os.path.basename(imdb_list[n_s]['image']))

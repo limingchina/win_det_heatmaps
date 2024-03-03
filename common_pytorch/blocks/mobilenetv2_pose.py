@@ -1,7 +1,6 @@
 import os
 import torch
 import torch.utils.model_zoo as model_zoo
-from torchvision.models.mobilenet import model_urls
 from easydict import EasyDict as edict
 
 from common_pytorch.base_modules.mobilenetv2 import MobileNetV2_Backbone
@@ -27,6 +26,10 @@ def get_default_network_config():
 
 def init_pose_net(pose_net, cfg):
     if cfg.from_model_zoo:
+        # From https://github.com/pytorch/vision/blob/release/0.12/torchvision/models/mobilenetv2.py
+        model_urls = {
+            "mobilenet_v2": "https://download.pytorch.org/models/mobilenet_v2-b0353104.pth",
+        }
         org_net = model_zoo.load_url(model_urls[cfg.name])
         # drop orginal resnet fc layer, add 'None' in case of no fc layer, that will raise error
         org_net.pop('classifier.1.weight', None)

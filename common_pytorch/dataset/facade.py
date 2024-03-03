@@ -18,7 +18,7 @@ from .evaluation import getAp
 num_corners = 4
 max_num_windows = 100
 point = namedtuple('point', ['x', 'y'])
-flip_pairs = np.array([[0, 3], [1, 2]], dtype=np.int)
+flip_pairs = np.array([[0, 3], [1, 2]], dtype=int)
 
 # For data parsing
 def notBG(im, x, y):
